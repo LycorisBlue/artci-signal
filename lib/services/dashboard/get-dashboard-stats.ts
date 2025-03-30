@@ -96,12 +96,29 @@ export const getDashboardStats = async (
 
     return await apiGet(urlWithParams);
   } catch (error: any) {
+    // Si erreur 401 (non autorisé), effacer les données d'authentification
+    if (error.status === 401) {
+      if (typeof window !== "undefined") {
+        // Supprimer les tokens du localStorage et des cookies
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        document.cookie = "token=; path=/; max-age=0";
+        document.cookie = "refreshToken=; path=/; max-age=0";
+
+        // Rediriger vers la page de connexion si nécessaire
+        // window.location.href = "/login";
+      }
+    }
+
     const typedError: DashboardError = {
       status: error.status || 500,
       message:
-        error.message || "Erreur lors de la récupération des statistiques",
+        error.status === 401
+          ? "Session expirée, veuillez vous reconnecter"
+          : error.message || "Erreur lors de la récupération des statistiques",
       data: error.data,
     };
+
     throw typedError;
   }
 };
