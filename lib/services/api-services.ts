@@ -1,6 +1,6 @@
 import { getFromStorage } from "@/lib/utils/storage";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://artci.api-medev.com";
 
 // Récupère le token depuis le storage
 export const getToken = async (): Promise<string | null> => {

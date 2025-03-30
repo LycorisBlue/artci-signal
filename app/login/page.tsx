@@ -3,7 +3,10 @@
 import Image from "next/image";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { EyeIcon, EyeOffIcon, LockIcon, MailIcon } from "lucide-react";
+import { login } from "@/lib/services/auth/login";
+import { saveToStorage } from "@/lib/utils/storage";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -12,6 +15,7 @@ export default function LoginPage() {
     const [rememberMe, setRememberMe] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,16 +23,22 @@ export default function LoginPage() {
         setError("");
 
         try {
-            // Simulation d'une requête d'authentification
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Appel de la fonction login depuis vos services existants
+            const response = await login({ email, password });
 
-            // Appeler ici la fonction login(email, password)
-            console.log("Tentative de connexion avec:", { email, rememberMe });
+            // Sauvegarde des tokens dans le storage
+            const { accessToken, refreshToken } = response.data.tokens;
+            saveToStorage("token", accessToken, true);
+            saveToStorage("refreshToken", refreshToken, rememberMe);
 
-            // Redirection après connexion réussie (à décommenter une fois la connexion fonctionnelle)
-            // window.location.href = "/dashboard";
-        } catch (err) {
-            setError("Identifiants incorrects. Veuillez réessayer." + err);
+            console.log("Connexion réussie:", { email, rememberMe });
+
+            // Redirection après connexion réussie
+            router.push("/");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } catch (err: any) {
+            const errorMessage = err.message || "Identifiants incorrects. Veuillez réessayer.";
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
