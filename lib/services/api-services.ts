@@ -1,6 +1,10 @@
-import { getFromStorage } from "@/lib/utils/storage";
+// Modifications à apporter au fichier lib/services/api-services.ts
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "https://artci.api-medev.com";
+import { getFromStorage } from "@/lib/utils/storage";
+import { withAuthHandling } from "@/lib/utils/auth-interceptor";
+
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://artci.api-medev.com";
 
 // Récupère le token depuis le storage
 export const getToken = async (): Promise<string | null> => {
@@ -15,7 +19,7 @@ const defaultHeaders = async () => {
   };
 };
 
-// Fonction générique
+// Fonction générique pour les requêtes API
 const request = async (method: string, url: string, data?: unknown) => {
   const headers = await defaultHeaders();
   const res = await fetch(`${BASE_URL}${url}`, {
@@ -32,9 +36,19 @@ const request = async (method: string, url: string, data?: unknown) => {
   return res.json().catch(() => ({}));
 };
 
-// Fonctions spécifiques
-export const apiGet = (url: string) => request("GET", url);
-export const apiPost = (url: string, data: unknown) =>
-  request("POST", url, data);
-export const apiPut = (url: string, data: unknown) => request("PUT", url, data);
-export const apiDelete = (url: string) => request("DELETE", url);
+// Fonctions spécifiques avec gestion d'authentification
+export const apiGet = async (url: string) => {
+  return withAuthHandling(request, "GET", url);
+};
+
+export const apiPost = async (url: string, data: unknown) => {
+  return withAuthHandling(request, "POST", url, data);
+};
+
+export const apiPut = async (url: string, data: unknown) => {
+  return withAuthHandling(request, "PUT", url, data);
+};
+
+export const apiDelete = async (url: string) => {
+  return withAuthHandling(request, "DELETE", url);
+};

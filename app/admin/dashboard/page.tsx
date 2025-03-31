@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     getDashboardStats,
     DashboardStats,
@@ -23,45 +23,79 @@ import {
     CheckCircle2,
     XCircle,
     Clock8,
-    AlertCircle
+    AlertCircle,
+    RefreshCw
 } from "lucide-react";
 
 export default function DashboardPage() {
     const [period, setPeriod] = useState<PeriodType>("month");
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<{
+        message: string;
+        status?: number;
+        type?: string;
+        retry?: boolean;
+    } | null>(null);
     const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState<boolean>(false);
 
-    useEffect(() => {
-        const fetchDashboardData = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const response = await getDashboardStats(period);
-                setStats(response.data);
-            } catch (err) {
-                // Traitement spécifique des erreurs de type DashboardError
-                if (typeof err === 'object' && err !== null && 'status' in err && 'message' in err) {
-                    const dashboardError = err as DashboardError;
-                    setError(
-                        `Erreur ${dashboardError.status}: ${dashboardError.message}${dashboardError.data?.errorType ? ` (${dashboardError.data.errorType})` : ''
-                        }`
-                    );
-                    console.error("Erreur dashboard (typée):", dashboardError);
-                } else {
-                    // Traitement des autres types d'erreurs
-                    const errorMessage = err instanceof Error ? err.message : "Erreur inconnue lors de la récupération des données";
-                    setError(errorMessage);
-                    console.error("Erreur dashboard (non typée):", err);
-                }
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    // Créez fetchDashboardData comme une fonction useCallback pour pouvoir l'utiliser dans le bouton Réessayer
+    const fetchDashboardData = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
 
-        fetchDashboardData();
+        try {
+            const response = await getDashboardStats(period);
+            setStats(response.data);
+        } catch (err) {
+            // Traitement spécifique des erreurs de type DashboardError
+            if (typeof err === 'object' && err !== null && 'status' in err && 'message' in err) {
+                const dashboardError = err as DashboardError;
+
+                // Gestion spéciale des erreurs d'authentification
+                if (dashboardError.status === 401) {
+                    setError({
+                        message: "Votre session a expiré. Vous allez être redirigé vers la page de connexion.",
+                        status: 401,
+                        type: dashboardError.data?.errorType || 'AUTH_ERROR',
+                        retry: false
+                    });
+
+                    // Redirection après un court délai
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 3000);
+
+                    return;
+                }
+
+                // Autres erreurs du backend
+                setError({
+                    message: dashboardError.message,
+                    status: dashboardError.status,
+                    type: dashboardError.data?.errorType,
+                    retry: true // On peut réessayer pour la plupart des erreurs
+                });
+
+                console.error("Erreur dashboard (typée):", dashboardError);
+            } else {
+                // Erreurs non typées (erreurs réseau, bugs JavaScript, etc.)
+                const errorMessage = err instanceof Error ? err.message : "Erreur inconnue lors de la récupération des données";
+                setError({
+                    message: errorMessage,
+                    retry: true
+                });
+                console.error("Erreur dashboard (non typée):", err);
+            }
+        } finally {
+            setIsLoading(false);
+        }
     }, [period]);
+
+    // Utilisez fetchDashboardData dans useEffect
+    useEffect(() => {
+        fetchDashboardData();
+    }, [fetchDashboardData]);
 
     const handlePeriodChange = (newPeriod: PeriodType) => {
         setPeriod(newPeriod);
@@ -89,18 +123,23 @@ export default function DashboardPage() {
 
     if (error) {
         return (
-            <div className="bg-red-50 text-red-700 p-6 rounded-xl shadow-sm">
+            <div className={`${error.status === 401 ? "bg-orange-50" : "bg-red-50"} text-${error.status === 401 ? "orange" : "red"}-700 p-6 rounded-xl shadow-sm`}>
                 <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5" />
-                    Erreur
+                    {error.status ? `Erreur ${error.status}` : "Erreur"}
                 </h2>
-                <p className="mb-4">{error}</p>
-                <button
-                    onClick={() => getDashboardStats(period)}
-                    className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
-                >
-                    Réessayer
-                </button>
+                <p className="mb-4">{error.message}</p>
+                {error.type && <p className="text-sm mb-4">Type: {error.type}</p>}
+
+                {error.retry && (
+                    <button
+                        onClick={() => fetchDashboardData()}
+                        className={`px-4 py-2 bg-${error.status === 401 ? "orange" : "red"}-100 text-${error.status === 401 ? "orange" : "red"}-700 rounded-lg hover:bg-${error.status === 401 ? "orange" : "red"}-200 transition-colors flex items-center gap-2`}
+                    >
+                        <RefreshCw className="h-4 w-4" />
+                        Réessayer
+                    </button>
+                )}
             </div>
         );
     }

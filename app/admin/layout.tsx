@@ -18,9 +18,21 @@ import {
     ChevronLeft,
     ChevronRight,
     User,
+    Bell,
+    CheckCircle2,
+    AlertCircle,
 } from "lucide-react";
 import { getFromStorage } from "@/lib/utils/storage";
 import { logout } from "@/lib/services/auth/logout";
+import { getMe } from "@/lib/services/auth/me";
+
+interface UserData {
+    id: string;
+    nom: string;
+    email: string;
+    numero: string;
+    role: "root" | "admin" | "citoyen";
+}
 
 export default function AdminLayout({
     children,
@@ -32,8 +44,24 @@ export default function AdminLayout({
     const [darkMode, setDarkMode] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [userData, setUserData] = useState<UserData | null>(null);
+    const [toast, setToast] = useState<{
+        visible: boolean;
+        message: string;
+        type: 'success' | 'error' | 'warning' | 'info';
+    } | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [isLoadingUser, setIsLoadingUser] = useState<boolean>(true);
     const router = useRouter();
     const pathname = usePathname();
+    const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+        setToast({ visible: true, message, type });
+
+        // Auto-hide après 5 secondes
+        setTimeout(() => {
+            setToast(null);
+        }, 5000);
+    };
 
     useEffect(() => {
         // Vérifier l'authentification
@@ -43,7 +71,25 @@ export default function AdminLayout({
                 router.push("/login");
                 return;
             }
-            setIsLoading(false);
+
+            // Récupérer les données utilisateur si le token existe
+            try {
+                const response = await getMe();
+                setUserData(response.data.user);
+            } catch (error) {
+                console.error("Erreur lors de la récupération des données utilisateur:", error);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const errorMessage = (error as any)?.message || "Erreur lors de la récupération des données utilisateur";
+                showToast(errorMessage, 'error');
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                if ((error as any)?.status === 401) {
+                    router.push("/login");
+                    return;
+                }
+            } finally {
+                setIsLoadingUser(false);
+                setIsLoading(false);
+            }
         };
 
         // Récupérer l'état de la sidebar depuis le localStorage
@@ -243,24 +289,26 @@ export default function AdminLayout({
                 {/* User Section - Fixed at bottom with dropdown */}
                 <div className="border-t border-gray-100 dark:border-gray-800 p-4 mt-auto relative">
                     <div className={`w-full flex items-center gap-3 p-2 rounded-xl cursor-pointer 
-                        ${collapsed ? "justify-center" : ""}
-                        hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200`}
+      ${collapsed ? "justify-center" : ""}
+      hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200`}
                         onClick={() => setShowProfileMenu(!showProfileMenu)}
                     >
                         {/* Profile Image */}
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-800/30 dark:to-orange-700/20 flex items-center justify-center overflow-hidden shadow-md border-2 border-white dark:border-gray-800">
-                            <span className="text-orange-800 dark:text-orange-400 font-bold">U</span>
+                            <span className="text-orange-800 dark:text-orange-400 font-bold">
+                                {userData?.nom?.charAt(0) || userData?.email?.charAt(0) || 'U'}
+                            </span>
                         </div>
 
                         {/* Profile Info */}
                         <div className={`flex-1 min-w-0 transition-all duration-300 
-                            ${collapsed ? "hidden" : "block"}`}
+        ${collapsed ? "hidden" : "block"}`}
                         >
                             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                Administrateur
+                                {userData?.nom || 'Chargement...'}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                admin@artci.ci
+                                {userData?.email || ''}
                             </p>
                         </div>
                     </div>
@@ -272,7 +320,7 @@ export default function AdminLayout({
                             <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
                                 <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
                                     <p className="text-sm font-medium text-gray-900 dark:text-white">Connecté en tant que</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">admin@artci.ci</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{userData?.email || ''}</p>
                                 </div>
                                 <div className="p-1">
                                     <Link href="/admin/profile"
@@ -406,7 +454,7 @@ export default function AdminLayout({
                                     setShowProfileMenu(!showProfileMenu);
                                 }}
                             >
-                                U
+                                {userData?.nom?.charAt(0) || userData?.email?.charAt(0) || 'U'}
                             </button>
                         </div>
                     </div>
@@ -439,6 +487,38 @@ export default function AdminLayout({
                         setShowNotifications(false);
                     }}
                 />
+            )}
+
+            {toast && (
+                <div className="fixed bottom-4 right-4 z-50 animate-fade-in">
+                    <div
+                        className={`p-4 rounded-lg shadow-lg flex items-center gap-3 ${toast.type === 'error' ? 'bg-red-100 text-red-800 border-l-4 border-red-500' :
+                                toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+                                    toast.type === 'warning' ? 'bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500' :
+                                        'bg-blue-100 text-blue-800 border-l-4 border-blue-500'
+                            }`}
+                    >
+                        <div className={`rounded-full p-1 ${toast.type === 'error' ? 'bg-red-200' :
+                                toast.type === 'success' ? 'bg-green-200' :
+                                    toast.type === 'warning' ? 'bg-yellow-200' :
+                                        'bg-blue-200'
+                            }`}>
+                            {toast.type === 'error' && <AlertTriangle className="h-5 w-5" />}
+                            {toast.type === 'success' && <CheckCircle2 className="h-5 w-5" />}
+                            {toast.type === 'warning' && <AlertCircle className="h-5 w-5" />}
+                            {toast.type === 'info' && <Bell className="h-5 w-5" />}
+                        </div>
+                        <div className="flex-1">
+                            {toast.message}
+                        </div>
+                        <button
+                            onClick={() => setToast(null)}
+                            className="text-gray-500 hover:text-gray-700"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
             )}
         </div>
     );
