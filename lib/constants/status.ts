@@ -6,6 +6,7 @@ export enum SignalementStatus {
   EN_TRAITEMENT = "en traitement",
   CLOTURE = "clôturé",
   NON_PRIS_EN_CHARGE = "non pris en charge",
+  SPAM = "spam",
 }
 
 // Types de priorité des signalements
@@ -59,6 +60,7 @@ export const ALLOWED_STATUS_TRANSITIONS: Record<
     SignalementStatus.EN_TRAITEMENT,
     SignalementStatus.CLOTURE,
     SignalementStatus.NON_PRIS_EN_CHARGE,
+    SignalementStatus.SPAM,
   ],
   [SignalementStatus.EN_TRAITEMENT]: [
     SignalementStatus.CLOTURE,
@@ -66,7 +68,7 @@ export const ALLOWED_STATUS_TRANSITIONS: Record<
   ],
   [SignalementStatus.CLOTURE]: [SignalementStatus.EN_TRAITEMENT],
   [SignalementStatus.NON_PRIS_EN_CHARGE]: [SignalementStatus.EN_TRAITEMENT],
-};
+  [SignalementStatus.SPAM]: [SignalementStatus.EN_TRAITEMENT],};
 
 // Labels pour l'interface utilisateur
 export const STATUS_LABELS: Record<SignalementStatus, string> = {
@@ -74,6 +76,7 @@ export const STATUS_LABELS: Record<SignalementStatus, string> = {
   [SignalementStatus.EN_TRAITEMENT]: "En traitement",
   [SignalementStatus.CLOTURE]: "Clôturé",
   [SignalementStatus.NON_PRIS_EN_CHARGE]: "Non pris en charge",
+  [SignalementStatus.SPAM]: "Spam",
 };
 
 export const PRIORITY_LABELS: Record<PriorityLevel, string> = {
@@ -88,7 +91,8 @@ export const STATUS_COLORS: Record<SignalementStatus, string> = {
   [SignalementStatus.SOUMIS]: "bg-blue-100 text-blue-800",
   [SignalementStatus.EN_TRAITEMENT]: "bg-yellow-100 text-yellow-800",
   [SignalementStatus.CLOTURE]: "bg-green-100 text-green-800",
-  [SignalementStatus.NON_PRIS_EN_CHARGE]: "bg-red-100 text-red-800",
+  [SignalementStatus.NON_PRIS_EN_CHARGE]: "bg-black-100 text-black-800",
+  [SignalementStatus.SPAM]: "bg-red-100 text-red-800",
 };
 
 export const PRIORITY_COLORS: Record<PriorityLevel, string> = {
