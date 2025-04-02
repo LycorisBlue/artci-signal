@@ -1,6 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { API_ROUTES } from "@/lib/constants/api-routes";
 import { apiGet } from "../api-services";
+import { createApiService } from "@/lib/utils/service-creator";
+import { ApiError } from "@/lib/types/api-error";
+import { useState, useEffect } from "react";
 
 // Types pour la période
 export type PeriodType = "day" | "week" | "month" | "year" | "all";
@@ -69,77 +71,74 @@ export type DashboardStatsResponse = {
   data: DashboardStats;
 };
 
-// Types pour les erreurs
-export type DashboardError = {
-  status: number;
-  message: string;
-  data?: {
-    errorType?: string;
-    error?: string;
-  };
-};
+// Types d'erreur spécifiques pour le dashboard
+export type DashboardErrorType =
+  | "TOKEN_MISSING"
+  | "TOKEN_INVALID"
+  | "TOKEN_EXPIRED"
+  | "INVALID_PERIOD"
+  | "FORBIDDEN"
+  | "SERVER_ERROR";
+
+// Export du type d'erreur pour réutilisation
+export type DashboardError = ApiError<DashboardErrorType>;
 
 /**
- * Récupère les statistiques du tableau de bord
+ * Service pour récupérer les statistiques du tableau de bord
  * @param period - Période d'analyse (jour, semaine, mois, année, tout)
  * @returns Promesse avec les statistiques du tableau de bord
  */
-export const getDashboardStats = async (
-  period: PeriodType = "month"
-): Promise<DashboardStatsResponse> => {
-  try {
-    // Vérifier si la route est définie dans API_ROUTES
-    const url = API_ROUTES.ADMIN?.DASHBOARD || "/admin/dashboard";
+export const getDashboardStats = createApiService<
+  DashboardStatsResponse,
+  DashboardErrorType
+>(async (period: PeriodType = "month") => {
+  // Vérifier si la route est définie dans API_ROUTES
+  const url = API_ROUTES.ADMIN?.DASHBOARD || "/admin/dashboard";
 
-    // Construire l'URL avec le paramètre de période
-    const urlWithParams = `${url}?period=${period}`;
+  // Construire l'URL avec le paramètre de période
+  const urlWithParams = `${url}?period=${period}`;
 
-    return await apiGet(urlWithParams);
-  } catch (error: any) {
-    // Si erreur 401 (non autorisé), effacer les données d'authentification
-    if (error.status === 401) {
-      if (typeof window !== "undefined") {
-        // Supprimer les tokens du localStorage et des cookies
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
-        document.cookie = "token=; path=/; max-age=0";
-        document.cookie = "refreshToken=; path=/; max-age=0";
-
-        // Rediriger vers la page de connexion si nécessaire
-        // window.location.href = "/login";
-      }
-    }
-
-    const typedError: DashboardError = {
-      status: error.status || 500,
-      message:
-        error.status === 401
-          ? "Session expirée, veuillez vous reconnecter"
-          : error.message || "Erreur lors de la récupération des statistiques",
-      data: error.data,
-    };
-
-    throw typedError;
-  }
-};
+  return await apiGet(urlWithParams);
+}, "Erreur lors de la récupération des statistiques du tableau de bord");
 
 /**
  * Hook React pour récupérer les statistiques du tableau de bord
- * Note: Ce hook peut être utilisé avec React ou React Query si vous l'ajoutez à votre projet
+ * @param period - Période d'analyse (jour, semaine, mois, année, tout)
+ * @returns Object contenant les données, l'état de chargement et l'erreur éventuelle
  */
-export const useDashboardStats = async (period: PeriodType = "month") => {
-  try {
-    const response = await getDashboardStats(period);
-    return {
-      data: response.data,
-      isLoading: false,
-      error: null,
+export const useDashboardStats = (period: PeriodType = "month") => {
+  const [state, setState] = useState<{
+    data: DashboardStats | null;
+    isLoading: boolean;
+    error: DashboardError | null;
+  }>({
+    data: null,
+    isLoading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+      try {
+        const response = await getDashboardStats(period);
+        setState({
+          data: response.data,
+          isLoading: false,
+          error: null,
+        });
+      } catch (error) {
+        setState({
+          data: null,
+          isLoading: false,
+          error: error as DashboardError,
+        });
+      }
     };
-  } catch (error) {
-    return {
-      data: null,
-      isLoading: false,
-      error,
-    };
-  }
+
+    fetchData();
+  }, [period]);
+
+  return state;
 };

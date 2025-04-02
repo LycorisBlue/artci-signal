@@ -19,8 +19,10 @@ import {
     SignalementStats
 } from "@/lib/services/signalements/get-signalements-list";
 import { SignalementStatus, PriorityLevel, STATUS_COLORS, PRIORITY_COLORS, IncidentType } from "@/lib/constants/status";
-
+import { useRouter } from "next/navigation";
 export default function SignalementsPage() {
+    const router = useRouter(); // Assurez-vous que cette ligne existe
+
     // États pour les données
     const [signalements, setSignalements] = useState<Signalement[]>([]);
     const [pagination, setPagination] = useState<PaginationInfo | null>(null);
@@ -561,7 +563,7 @@ export default function SignalementsPage() {
                                                 <button
                                                     onClick={() => {
                                                         // Naviguer vers la page de détails
-                                                        // router.push(`/admin/signalements/${signalement.id}`);
+                                                        router.push(`/admin/signalements/${signalement.id}`);
                                                     }}
                                                     className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 transition-colors"
                                                 >
@@ -596,7 +598,7 @@ export default function SignalementsPage() {
                                                                         className="flex items-center gap-2 w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
                                                                         onClick={() => {
                                                                             // Naviguer vers la page de détails
-                                                                            // router.push(`/admin/signalements/${signalement.id}`);
+                                                                            router.push(`/admin/signalements/${signalement.id}`);
                                                                             setActiveActionMenu(null);
                                                                         }}
                                                                     >
