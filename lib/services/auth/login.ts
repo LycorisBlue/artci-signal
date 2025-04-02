@@ -1,12 +1,15 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { API_ROUTES } from "@/lib/constants/api-routes";
 import { apiPost } from "../api-services";
+import { createApiService } from "@/lib/utils/service-creator";
+import { ApiError } from "@/lib/types/api-error";
 
+// Types existants pour le payload de connexion
 type LoginPayload = {
   email: string;
   password: string;
 };
 
+// Type pour la réponse de connexion réussie
 type LoginSuccess = {
   message: string;
   data: {
@@ -25,26 +28,19 @@ type LoginSuccess = {
   };
 };
 
-type LoginError = {
-  status: number;
-  message: string;
-  data?: {
-    errorType?: string;
-    errors?: Record<string, string>;
-    [key: string]: any;
-  };
-};
+// Types d'erreur spécifiques pour le login
+type LoginErrorType =
+  | "TOKEN_MISSING"
+  | "UNAUTHORIZED"
+  | "INVALID_CREDENTIALS"
+  | "ACCOUNT_LOCKED"
+  | "SERVER_ERROR";
 
-export const login = async (payload: LoginPayload): Promise<LoginSuccess> => {
-  try {
-    return await apiPost(API_ROUTES.AUTH.LOGIN, payload);
-  } catch (error: any) {
-    // Typage explicite de l'erreur conforme au YAML
-    const typedError: LoginError = {
-      status: error.status,
-      message: error.message,
-      data: error.data,
-    };
-    throw typedError;
-  }
-};
+// Export du type d'erreur pour une réutilisation éventuelle
+export type LoginError = ApiError<LoginErrorType>;
+
+// Création du service login avec gestion d'erreur standardisée
+export const login = createApiService<LoginSuccess, LoginErrorType>(
+  (payload: LoginPayload) => apiPost(API_ROUTES.AUTH.LOGIN, payload),
+  "Identifiants incorrects. Veuillez réessayer."
+);

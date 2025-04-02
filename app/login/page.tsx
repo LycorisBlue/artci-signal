@@ -18,30 +18,44 @@ export default function LoginPage() {
     const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
+        console.log('Début de handleSubmit');
         e.preventDefault();
+        console.log('Après preventDefault');
         setIsLoading(true);
         setError("");
 
         try {
+            console.log('Avant appel login');
             // Appel de la fonction login depuis vos services existants
             const response = await login({ email, password });
+            console.log('Après appel login réussi', response);
 
             // Sauvegarde des tokens dans le storage
             const { accessToken, refreshToken } = response.data.tokens;
+            console.log('Tokens extraits', { hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken });
             saveToStorage("token", accessToken, true);
             saveToStorage("refreshToken", refreshToken, rememberMe);
+            console.log('Tokens sauvegardés');
 
             console.log("Connexion réussie:", { email, rememberMe });
 
             // Redirection après connexion réussie
+            console.log('Avant redirection');
             router.push("/");
+            console.log('Après appel router.push');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
+            console.log('Dans le catch', err);
             const errorMessage = err.message || "Identifiants incorrects. Veuillez réessayer.";
+            console.log('Message d\'erreur extrait', errorMessage);
             setError(errorMessage);
+            console.log('Erreur définie dans state');
         } finally {
+            console.log('Dans finally');
             setIsLoading(false);
+            console.log('Loading state mis à false');
         }
+        console.log('Fin de handleSubmit');
     };
 
     const togglePasswordVisibility = () => {

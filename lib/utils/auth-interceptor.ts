@@ -58,7 +58,10 @@ export const handleAuthError = async (error: any): Promise<boolean> => {
       }
     } else {
       // Si ce n'est pas une erreur de token expiré, on redirige directement
-      if (typeof window !== "undefined") {
+      if (
+        typeof window !== "undefined" &&
+        !window.location.pathname.includes("/login")
+      ) {
         // Supprimer les tokens
         document.cookie = "token=; path=/; max-age=0";
         document.cookie = "refreshToken=; path=/; max-age=0";
@@ -93,7 +96,7 @@ export const withAuthHandling = async <T>(
     // Premier essai de l'appel API
     return await apiCall(...args);
   } catch (error: any) {
-    console.error("Erreur API:", error);
+    console.log("Erreur API:", error);
 
     // Tenter de gérer l'erreur d'authentification
     if (error.status === 401 && (await handleAuthError(error))) {
