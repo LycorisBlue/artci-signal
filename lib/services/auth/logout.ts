@@ -2,6 +2,7 @@ import { API_ROUTES } from "@/lib/constants/api-routes";
 import { apiPost } from "../api-services";
 import { createApiService } from "@/lib/utils/service-creator";
 import { ApiError } from "@/lib/types/api-error";
+import { useUserStore } from "@/lib/stores/userStore";
 
 // Supprime un cookie (client seulement)
 const removeCookie = (key: string) => {
@@ -38,8 +39,13 @@ export const logout = async (): Promise<LogoutSuccess> => {
     removeCookie("token");
     removeCookie("refreshToken");
 
-    // Redirection
+    // Nettoyer le store utilisateur
     if (typeof window !== "undefined") {
+      // On ne peut pas utiliser le hook ici directement,
+      // alors on accède au store via son API interne
+      useUserStore.getState().clearUserData();
+
+      // Redirection
       window.location.href = "/login";
     }
 

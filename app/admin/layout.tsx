@@ -24,15 +24,8 @@ import {
 } from "lucide-react";
 import { getFromStorage } from "@/lib/utils/storage";
 import { logout } from "@/lib/services/auth/logout";
-import { getMe } from "@/lib/services/auth/me";
+import { useUserStore } from "@/lib/stores/userStore";
 
-interface UserData {
-    id: string;
-    nom: string;
-    email: string;
-    numero: string;
-    role: "root" | "admin" | "citoyen";
-}
 
 export default function AdminLayout({
     children,
@@ -44,7 +37,7 @@ export default function AdminLayout({
     const [darkMode, setDarkMode] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
-    const [userData, setUserData] = useState<UserData | null>(null);
+    const { userData, fetchUserData, clearUserData } = useUserStore();
     const [toast, setToast] = useState<{
         visible: boolean;
         message: string;
@@ -54,14 +47,6 @@ export default function AdminLayout({
     const [isLoadingUser, setIsLoadingUser] = useState<boolean>(true);
     const router = useRouter();
     const pathname = usePathname();
-    const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
-        setToast({ visible: true, message, type });
-
-        // Auto-hide après 5 secondes
-        setTimeout(() => {
-            setToast(null);
-        }, 5000);
-    };
 
     useEffect(() => {
         // Vérifier l'authentification
@@ -72,24 +57,9 @@ export default function AdminLayout({
                 return;
             }
 
-            // Récupérer les données utilisateur si le token existe
-            try {
-                const response = await getMe();
-                setUserData(response.data.user);
-            } catch (error) {
-                console.error("Erreur lors de la récupération des données utilisateur:", error);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const errorMessage = (error as any)?.message || "Erreur lors de la récupération des données utilisateur";
-                showToast(errorMessage, 'error');
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if ((error as any)?.status === 401) {
-                    router.push("/login");
-                    return;
-                }
-            } finally {
-                setIsLoadingUser(false);
-                setIsLoading(false);
-            }
+            // Utiliser le store pour récupérer les données utilisateur
+            await fetchUserData();
+            setIsLoading(false);
         };
 
         // Récupérer l'état de la sidebar depuis le localStorage
@@ -157,6 +127,7 @@ export default function AdminLayout({
     const handleLogout = async () => {
         try {
             await logout();
+            clearUserData(); // Nettoyer les données utilisateur lors de la déconnexion
             router.push("/login");
         } catch (error) {
             console.error("Erreur de déconnexion:", error);
