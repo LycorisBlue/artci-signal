@@ -22,6 +22,8 @@ export type SignalementRoutes = {
   UPDATE_STATUS: (id: string) => string;
   FLAG: (id: string) => string;
   COMMENT: (id: string) => string;
+  SPAM: (id: string) => string;
+  REMOVE_SPAM: (id: string) => string;
   STATS: string;
   STATS_PERIOD: string;
   STATS_TYPES: string;
@@ -84,6 +86,8 @@ export const API_ROUTES: ApiRoutes = {
     STATS: "/signalement/stats",
     STATS_PERIOD: "/signalement/stats-period",
     STATS_TYPES: "/signalement/stats-types",
+    SPAM: (id: string) => `/signalement/spam/${id}`,
+    REMOVE_SPAM: (id: string) => `/signalement/remove-spam/${id}`,
     TRANSFER_DOCUMENTS: (id: string) => `/signalement/transfer-documents/${id}`,
   },
   PUBLICATION: {

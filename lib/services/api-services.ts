@@ -81,6 +81,6 @@ export const apiPut = async (url: string, data: unknown) => {
   return withAuthHandling(request, "PUT", url, data);
 };
 
-export const apiDelete = async (url: string) => {
-  return withAuthHandling(request, "DELETE", url);
+export const apiDelete = async (url: string, data?: unknown) => {
+  return withAuthHandling(request, "DELETE", url, data);
 };
