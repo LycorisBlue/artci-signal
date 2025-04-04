@@ -13,10 +13,6 @@ import {
     Menu,
     X,
     AlertTriangle,
-    Sun,
-    Moon,
-    ChevronLeft,
-    ChevronRight,
     User,
     Bell,
     CheckCircle2,
@@ -26,7 +22,6 @@ import { getFromStorage } from "@/lib/utils/storage";
 import { logout } from "@/lib/services/auth/logout";
 import { useUserStore } from "@/lib/stores/userStore";
 
-
 export default function AdminLayout({
     children,
 }: {
@@ -34,7 +29,6 @@ export default function AdminLayout({
 }) {
     const [collapsed, setCollapsed] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [darkMode, setDarkMode] = useState(false);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const { userData, fetchUserData, clearUserData } = useUserStore();
@@ -70,13 +64,37 @@ export default function AdminLayout({
             }
         };
 
-        // Récupérer le mode thème
-        const getThemeMode = () => {
+        // Appliquer le thème en fonction des préférences du système
+        const applySystemTheme = () => {
             if (typeof window !== "undefined") {
-                const isDark = localStorage.getItem("darkMode") === "true" ||
-                    window.matchMedia("(prefers-color-scheme: dark)").matches;
-                setDarkMode(isDark);
-                document.documentElement.classList.toggle('dark', isDark);
+                const darkModePreferred = window.matchMedia("(prefers-color-scheme: dark)").matches;
+                if (darkModePreferred) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }
+        };
+
+        // Observer les changements de préférence de thème du système
+        const setupThemeListener = () => {
+            if (typeof window !== "undefined") {
+                const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+                // Fonction de mise à jour du thème
+                const handleThemeChange = (e: MediaQueryListEvent) => {
+                    if (e.matches) {
+                        document.documentElement.classList.add('dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                    }
+                };
+
+                // Ajouter l'écouteur d'événements
+                mediaQuery.addEventListener('change', handleThemeChange);
+
+                // Retourner une fonction de nettoyage pour supprimer l'écouteur
+                return () => mediaQuery.removeEventListener('change', handleThemeChange);
             }
         };
 
@@ -90,16 +108,19 @@ export default function AdminLayout({
         window.addEventListener('resize', handleResize);
         checkAuth();
         getSidebarState();
-        getThemeMode();
+        applySystemTheme();
+        const cleanupThemeListener = setupThemeListener();
 
         return () => {
             window.removeEventListener('resize', handleResize);
+            if (cleanupThemeListener) cleanupThemeListener();
         };
     }, [router]);
 
-    // Réinitialiser sur changement de route sur mobile
+    // Réinitialiser sur changement de route
     useEffect(() => {
-        if (window.innerWidth < 1024) {
+        const isMobile = window.innerWidth < 1024;
+        if (isMobile) {
             setCollapsed(true);
         }
         // Fermer les menus ouverts lors des changements de page
@@ -108,20 +129,8 @@ export default function AdminLayout({
     }, [pathname]);
 
     const toggleSidebar = () => {
-        const newState = !collapsed;
-        setCollapsed(newState);
-        if (typeof window !== "undefined") {
-            localStorage.setItem("sidebarCollapsed", String(newState));
-        }
-    };
-
-    const toggleTheme = () => {
-        const newState = !darkMode;
-        setDarkMode(newState);
-        if (typeof window !== "undefined") {
-            localStorage.setItem("darkMode", String(newState));
-            document.documentElement.classList.toggle('dark', newState);
-        }
+        // Permet de basculer la sidebar sur tous les appareils
+        setCollapsed(!collapsed);
     };
 
     const handleLogout = async () => {
@@ -181,7 +190,7 @@ export default function AdminLayout({
     ];
 
     return (
-        <div className={`h-screen flex bg-gray-50 dark:bg-gray-950 ${darkMode ? "dark" : ""}`}>
+        <div className="h-screen flex bg-gray-50 dark:bg-gray-950">
             {/* Sidebar - Fixed on all screen sizes */}
             <aside
                 className={`
@@ -190,14 +199,14 @@ export default function AdminLayout({
                     transition-all duration-300 ease-in-out
                     bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 z-40
                     ${collapsed
-                        ? "w-20 -translate-x-full lg:translate-x-0 lg:w-20"
+                        ? "w-20 -translate-x-full lg:translate-x-0 lg:w-72"
                         : "w-72 translate-x-0"
                     }
                 `}
             >
                 {/* Sidebar header */}
                 <div className="h-16 flex items-center px-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
-                    <div className={`flex items-center transition-all duration-300 ${collapsed ? "opacity-0 w-0" : "opacity-100"}`}>
+                    <div className={`flex items-center transition-all duration-300 ${collapsed ? "lg:opacity-100 opacity-0 w-0 lg:w-auto" : "opacity-100"}`}>
                         <div className="flex-shrink-0 mr-2">
                             <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold shadow-md">
                                 A
@@ -207,15 +216,7 @@ export default function AdminLayout({
                             ARTCI<span className="text-orange-500">Signal</span>
                         </span>
                     </div>
-                    <button
-                        onClick={toggleSidebar}
-                        className="hidden lg:flex ml-auto p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors duration-200"
-                    >
-                        {collapsed ?
-                            <ChevronRight className="w-5 h-5" /> :
-                            <ChevronLeft className="w-5 h-5" />
-                        }
-                    </button>
+                    {/* Bouton caché sur les grands écrans */}
                 </div>
 
                 {/* Navigation - Scrollable if needed */}
@@ -243,7 +244,7 @@ export default function AdminLayout({
                                     {link.icon}
                                 </span>
 
-                                <span className={`font-medium truncate transition-all duration-300 ${collapsed ? "opacity-0 w-0 hidden" : "opacity-100"}`}>
+                                <span className={`font-medium truncate transition-all duration-300 ${collapsed ? "lg:opacity-100 lg:w-auto opacity-0 w-0 hidden lg:inline" : "opacity-100"}`}>
                                     {link.name}
                                 </span>
 
@@ -321,7 +322,7 @@ export default function AdminLayout({
             </aside>
 
             {/* Main content wrapper - Adjust margin for fixed sidebar */}
-            <div className={`flex-1 flex flex-col min-h-screen overflow-hidden transition-all duration-300 ${collapsed ? "lg:ml-20" : "lg:ml-72"}`}>
+            <div className={`flex-1 flex flex-col min-h-screen overflow-hidden transition-all duration-300 ${collapsed ? "lg:ml-72" : "lg:ml-72"}`}>
                 {/* Header */}
                 <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
                     <div className="flex items-center">
@@ -345,18 +346,6 @@ export default function AdminLayout({
 
                     {/* Header Right Items */}
                     <div className="flex items-center space-x-3">
-                        {/* Theme Switcher */}
-                        <button
-                            onClick={toggleTheme}
-                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-colors group"
-                            aria-label="Changer de thème"
-                        >
-                            {darkMode ?
-                                <Sun className="h-5 w-5 group-hover:text-orange-500 transition-colors" /> :
-                                <Moon className="h-5 w-5 group-hover:text-blue-500 transition-colors" />
-                            }
-                        </button>
-
                         {/* Notifications Dropdown */}
                         <div className="relative">
                             <button
@@ -464,15 +453,15 @@ export default function AdminLayout({
                 <div className="fixed bottom-4 right-4 z-50 animate-fade-in">
                     <div
                         className={`p-4 rounded-lg shadow-lg flex items-center gap-3 ${toast.type === 'error' ? 'bg-red-100 text-red-800 border-l-4 border-red-500' :
-                                toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
-                                    toast.type === 'warning' ? 'bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500' :
-                                        'bg-blue-100 text-blue-800 border-l-4 border-blue-500'
+                            toast.type === 'success' ? 'bg-green-100 text-green-800 border-l-4 border-green-500' :
+                                toast.type === 'warning' ? 'bg-yellow-100 text-yellow-800 border-l-4 border-yellow-500' :
+                                    'bg-blue-100 text-blue-800 border-l-4 border-blue-500'
                             }`}
                     >
                         <div className={`rounded-full p-1 ${toast.type === 'error' ? 'bg-red-200' :
-                                toast.type === 'success' ? 'bg-green-200' :
-                                    toast.type === 'warning' ? 'bg-yellow-200' :
-                                        'bg-blue-200'
+                            toast.type === 'success' ? 'bg-green-200' :
+                                toast.type === 'warning' ? 'bg-yellow-200' :
+                                    'bg-blue-200'
                             }`}>
                             {toast.type === 'error' && <AlertTriangle className="h-5 w-5" />}
                             {toast.type === 'success' && <CheckCircle2 className="h-5 w-5" />}

@@ -59,6 +59,11 @@ const SignalementDetailPage = () => {
         refetch();
     };
 
+    const handleActionsAdded = () => {
+        showToast('Votre modification est un succès!', 'success');
+        refetch();
+    };
+
     // Gérer l'affichage des erreurs
     if (error) {
         return (
@@ -123,7 +128,7 @@ const SignalementDetailPage = () => {
                 />}
                 actionsComponent={<ActionsTab
                     signalement={signalement}
-                    onStatusChange={refetch}
+                    onStatusChange={handleActionsAdded}
                     isLoading={isLoading}
                 />}
             />
