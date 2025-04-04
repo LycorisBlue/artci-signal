@@ -64,6 +64,11 @@ const SignalementDetailPage = () => {
         refetch();
     };
 
+    const handleRefresh = () => {
+        showToast('Page actualisé!', 'success');
+        refetch();
+    };
+
     // Gérer l'affichage des erreurs
     if (error) {
         return (
@@ -100,7 +105,7 @@ const SignalementDetailPage = () => {
                 id={signalement?.id}
                 dateCreation={signalement?.date_creation}
                 isLoading={isLoading}
-                refetch={refetch}
+                refetch={handleRefresh}
             />
 
             {/* Cartes d'état */}

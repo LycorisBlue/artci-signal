@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, RefreshCw, Download, Share2 } from 'lucide-react';
+import { ChevronLeft, RefreshCw, Download } from 'lucide-react';
 
 interface SignalementHeaderProps {
     titre?: string;
@@ -89,19 +89,11 @@ const SignalementHeader: React.FC<SignalementHeaderProps> = ({
                 {id && !isLoading && (
                     <>
                         <button
-                            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                            aria-label="Télécharger le rapport"
-                        >
-                            <Download className="h-4 w-4" />
-                            <span>Exporter</span>
-                        </button>
-
-                        <button
                             className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors"
                             aria-label="Partager le signalement"
                         >
-                            <Share2 className="h-4 w-4" />
-                            <span>Partager</span>
+                            <Download className="h-4 w-4" />
+                            <span>Exporter</span>
                         </button>
                     </>
                 )}
