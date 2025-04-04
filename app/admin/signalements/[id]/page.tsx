@@ -77,7 +77,7 @@ const SignalementDetailPage = () => {
                 isLoading={isLoading}
 
                 detailsComponent={<DetailsTab signalement={signalement} isLoading={isLoading} />}
-                preuvesComponent={<PreuvesTab preuves={signalement?.preuves || []} isLoading={isLoading} />}
+                preuvesComponent={<PreuvesTab preuves={signalement?.preuves || []} isLoading={isLoading} signalementId={id as string} />}
                 commentairesComponent={<CommentairesTab
                     commentaires={signalement?.commentaires || []}
                     signalementId={id as string}

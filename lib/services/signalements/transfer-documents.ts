@@ -1,5 +1,5 @@
 import { API_ROUTES } from "@/lib/constants/api-routes";
-import { apiPost } from "../api-services";
+import { apiPostFormData } from "../api-services";
 import { createApiService } from "@/lib/utils/service-creator";
 import { ApiError } from "@/lib/types/api-error";
 import { SignalementStatus } from "@/lib/constants/status";
@@ -53,7 +53,7 @@ export const transferDocumentsToSignalement = createApiService<
     throw new Error("Route non définie pour le transfert de documents");
   }
 
-  return apiPost(routeFunction(id), formData);
+  return apiPostFormData(routeFunction(id), formData);
 }, "Erreur lors du transfert de documents au signalement");
 
 /**

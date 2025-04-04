@@ -68,6 +68,59 @@ const request = async (method: string, url: string, data?: unknown) => {
   }
 };
 
+// Fonction spécifique pour les requêtes avec FormData
+const requestFormData = async (method: string, url: string, formData: FormData) => {
+  // Récupérer les headers sans Content-Type pour les requêtes FormData
+  const token = await getToken();
+  const headers = {
+    // Ne pas inclure Content-Type pour les requêtes FormData
+    // Le navigateur le définira automatiquement avec la boundary
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+
+  try {
+    const res = await fetch(`${BASE_URL}${url}`, {
+      method,
+      headers: headers,
+      body: formData, // Envoyer FormData tel quel
+    });
+
+    if (!res.ok) {
+      // Extraire les données d'erreur de la réponse
+      const errorData = await res.json().catch(() => ({}));
+
+      // Créer une erreur formatée selon notre pattern ApiError
+      const formattedError: ApiError = {
+        status: res.status,
+        message: errorData.message || `Erreur HTTP ${res.status}`,
+        data: {
+          errorType: errorData.data?.errorType || "API_ERROR",
+          ...errorData.data,
+        },
+      };
+
+      throw formattedError;
+    }
+
+    return res.json().catch(() => ({}));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    // Si c'est déjà une erreur formatée (de notre throw ci-dessus), la propager
+    if (error.status && error.message) {
+      throw error;
+    }
+
+    // Sinon, c'est une erreur réseau ou autre, la formater
+    throw {
+      status: 0,
+      message: error.message || "Erreur réseau",
+      data: {
+        errorType: "NETWORK_ERROR",
+      },
+    } as ApiError;
+  }
+};
+
 // Fonctions spécifiques avec gestion d'authentification
 export const apiGet = async (url: string) => {
   return withAuthHandling(request, "GET", url);
@@ -83,4 +136,14 @@ export const apiPut = async (url: string, data: unknown) => {
 
 export const apiDelete = async (url: string, data?: unknown) => {
   return withAuthHandling(request, "DELETE", url, data);
+};
+
+// Fonction d'API pour les requêtes avec FormData
+export const apiPostFormData = async (url: string, formData: FormData) => {
+  return withAuthHandling(requestFormData, "POST", url, formData);
+};
+
+// Fonction additionnelle si vous avez aussi besoin d'uploader avec PUT
+export const apiPutFormData = async (url: string, formData: FormData) => {
+  return withAuthHandling(requestFormData, "PUT", url, formData);
 };
