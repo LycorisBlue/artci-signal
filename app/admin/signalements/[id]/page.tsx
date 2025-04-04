@@ -15,12 +15,49 @@ import PreuvesTab from "@/components/signalements/tabs/PreuvesTab";
 import CommentairesTab from "@/components/signalements/tabs/CommentairesTab";
 import ActionsTab from "@/components/signalements/tabs/ActionsTab";
 import { useSignalementDetail } from "@/lib/services/signalements/get-signalement-details";
+import { useState } from "react";
+import Toast, { ToastType } from "@/components/common/Toast";
 
 // Services et hooks
 
 const SignalementDetailPage = () => {
     const { id } = useParams();
     const { data: signalement, isLoading, error, refetch } = useSignalementDetail(id as string);
+
+    const [toast, setToast] = useState<{
+        message: string;
+        type: ToastType;
+        visible: boolean;
+    }>({
+        message: '',
+        type: 'success',
+        visible: false
+    });
+
+    // Fonction pour afficher le toast
+    const showToast = (message: string, type: ToastType) => {
+        setToast({
+            message,
+            type,
+            visible: true
+        });
+    };
+
+    // Fonction pour fermer le toast
+    const closeToast = () => {
+        setToast(prev => ({ ...prev, visible: false }));
+    };
+
+    // Fonction qui sera appelée après un téléversement réussi
+    const handlePreuveUpload = () => {
+        showToast('Preuves téléversées avec succès ! Mise à jour des données...', 'success');
+        refetch();
+    };
+
+    const handleCommentAdded = () => {
+        showToast('Commentaire ajouté avec succès !', 'success');
+        refetch();
+    };
 
     // Gérer l'affichage des erreurs
     if (error) {
@@ -77,17 +114,25 @@ const SignalementDetailPage = () => {
                 isLoading={isLoading}
 
                 detailsComponent={<DetailsTab signalement={signalement} isLoading={isLoading} />}
-                preuvesComponent={<PreuvesTab preuves={signalement?.preuves || []} isLoading={isLoading} signalementId={id as string} />}
+                preuvesComponent={<PreuvesTab preuves={signalement?.preuves || []} isLoading={isLoading} signalementId={id as string} onUploadSuccess={handlePreuveUpload} />}
                 commentairesComponent={<CommentairesTab
                     commentaires={signalement?.commentaires || []}
                     signalementId={id as string}
                     isLoading={isLoading}
+                    onCommentAdded={handleCommentAdded}
                 />}
                 actionsComponent={<ActionsTab
                     signalement={signalement}
                     onStatusChange={refetch}
                     isLoading={isLoading}
                 />}
+            />
+            <Toast
+                message={toast.message}
+                type={toast.type}
+                isVisible={toast.visible}
+                onClose={closeToast}
+                duration={3000}
             />
         </div>
     );

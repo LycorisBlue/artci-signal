@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, CheckCircle, AlertTriangle, Ban } from 'lucide-react';
-import { SignalementStatus, PriorityLevel } from '@/lib/constants/status';
+import { RefreshCw, CheckCircle, AlertTriangle, Flag } from 'lucide-react';
+import { SignalementStatus, PriorityLevel, ALLOWED_STATUS_TRANSITIONS } from "@/lib/constants/status";
 import { SignalementDetail } from '@/lib/services/signalements/get-signalement-details';
+import { updateSignalementPriority } from '@/lib/services/signalements/flag';
+import { markSignalementAsSpam } from '@/lib/services/signalements/spam';
 
 interface ActionsTabProps {
     signalement: SignalementDetail | null | undefined;
@@ -17,7 +19,9 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
     const [selectedStatus, setSelectedStatus] = useState<string>('');
     const [selectedPriority, setSelectedPriority] = useState<string>('');
     const [statusChangeNote, setStatusChangeNote] = useState<string>('');
+    const [spamReason, setSpamReason] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Reset états quand le signalement change
     useEffect(() => {
@@ -31,28 +35,39 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
     const handleStatusChange = async () => {
         if (!signalement) return;
         if (selectedStatus === signalement.statut) {
-            alert('Aucun changement de statut détecté.');
+            setError('Aucun changement de statut détecté.');
             return;
         }
 
         if (!statusChangeNote.trim()) {
-            alert('Veuillez ajouter une note expliquant le changement de statut.');
+            setError('Veuillez ajouter une note expliquant le changement de statut.');
+            return;
+        }
+
+        // Vérifier si la transition est autorisée
+        const currentStatus = signalement.statut as SignalementStatus;
+        const newStatus = selectedStatus as SignalementStatus;
+
+        if (!ALLOWED_STATUS_TRANSITIONS[currentStatus]?.includes(newStatus)) {
+            setError(`La transition de "${currentStatus}" vers "${newStatus}" n'est pas autorisée.`);
             return;
         }
 
         setIsSubmitting(true);
+        setError(null);
+
         try {
             // Simuler un appel API pour changer le statut
             // Dans un cas réel, vous appelleriez votre API ici
             // Exemple: await updateSignalementStatus(signalement.id, selectedStatus, statusChangeNote);
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            alert(`Statut changé avec succès de "${signalement.statut}" à "${selectedStatus}"`);
+            console.log(`Statut changé de "${signalement.statut}" à "${selectedStatus}" avec la note: ${statusChangeNote}`);
             setStatusChangeNote('');
             onStatusChange(); // Rafraîchir les données du signalement
         } catch (error) {
             console.error('Erreur lors du changement de statut:', error);
-            alert('Une erreur est survenue lors du changement de statut.');
+            setError('Une erreur est survenue lors du changement de statut.');
         } finally {
             setIsSubmitting(false);
         }
@@ -62,49 +77,54 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
     const handlePriorityChange = async () => {
         if (!signalement) return;
         if (selectedPriority === signalement.priority_level) {
-            alert('Aucun changement de priorité détecté.');
+            setError('Aucun changement de priorité détecté.');
             return;
         }
 
         setIsSubmitting(true);
-        try {
-            // Simuler un appel API pour changer la priorité
-            // Dans un cas réel, vous appelleriez votre API ici
-            // Exemple: await updateSignalementPriority(signalement.id, selectedPriority);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+        setError(null);
 
-            alert(`Priorité changée avec succès à "${selectedPriority}"`);
+        try {
+            await updateSignalementPriority(
+                signalement.id,
+                selectedPriority as PriorityLevel
+            );
+            console.log(`Priorité changée avec succès à "${selectedPriority}"`);
             onStatusChange(); // Rafraîchir les données du signalement
         } catch (error) {
             console.error('Erreur lors du changement de priorité:', error);
-            alert('Une erreur est survenue lors du changement de priorité.');
+            setError('Une erreur est survenue lors du changement de priorité.');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // Fonction pour rejeter le signalement
-    const handleRejectSignalement = async () => {
+    // Fonction pour signaler comme spam
+    const handleMarkAsSpam = async () => {
         if (!signalement) return;
 
-        const confirmReject = window.confirm(
-            'Êtes-vous sûr de vouloir rejeter ce signalement ? Cette action ne peut pas être annulée.'
+        if (!spamReason.trim()) {
+            setError('Veuillez indiquer une raison pour marquer ce signalement comme spam.');
+            return;
+        }
+
+        const confirmSpam = window.confirm(
+            'Êtes-vous sûr de vouloir marquer ce signalement comme spam ? Cette action changera son statut.'
         );
 
-        if (!confirmReject) return;
+        if (!confirmSpam) return;
 
         setIsSubmitting(true);
-        try {
-            // Simuler un appel API pour rejeter le signalement
-            // Dans un cas réel, vous appelleriez votre API ici
-            // Exemple: await rejectSignalement(signalement.id);
-            await new Promise(resolve => setTimeout(resolve, 1000));
+        setError(null);
 
-            alert('Signalement rejeté avec succès.');
+        try {
+            await markSignalementAsSpam(signalement.id, spamReason, true);
+            console.log('Signalement marqué comme spam avec succès.');
+            setSpamReason('');
             onStatusChange(); // Rafraîchir les données du signalement
         } catch (error) {
-            console.error('Erreur lors du rejet du signalement:', error);
-            alert('Une erreur est survenue lors du rejet du signalement.');
+            console.error('Erreur lors du marquage comme spam:', error);
+            setError('Une erreur est survenue lors du marquage comme spam.');
         } finally {
             setIsSubmitting(false);
         }
@@ -135,8 +155,8 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
         );
     }
 
-    // Options de statut disponibles
-    const statusOptions = Object.values(SignalementStatus);
+    // Options de statut disponibles basées sur les transitions autorisées
+    const availableStatusOptions = ALLOWED_STATUS_TRANSITIONS[signalement.statut as SignalementStatus] || [];
     const priorityOptions = Object.values(PriorityLevel);
 
     return (
@@ -144,6 +164,13 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
             {/* Changement de statut */}
             <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                 <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Changer le statut</h3>
+
+                {error && (
+                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 rounded-lg flex items-start gap-2 text-sm">
+                        <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                        <span>{error}</span>
+                    </div>
+                )}
 
                 <div className="space-y-4">
                     <div>
@@ -157,10 +184,13 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                             className="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-2 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                             disabled={isSubmitting}
                         >
-                            {statusOptions.map((status) => (
-                                <option key={status} value={status}>
-                                    {status}
-                                </option>
+                            <option value={signalement.statut}>{signalement.statut}</option>
+                            {availableStatusOptions.map((status) => (
+                                status !== signalement.statut && (
+                                    <option key={status} value={status}>
+                                        {status}
+                                    </option>
+                                )
                             ))}
                         </select>
                     </div>
@@ -183,8 +213,8 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                         onClick={handleStatusChange}
                         disabled={isSubmitting || selectedStatus === signalement.statut || !statusChangeNote.trim()}
                         className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${isSubmitting || selectedStatus === signalement.statut || !statusChangeNote.trim()
-                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                                : 'bg-blue-500 hover:bg-blue-600 text-white'
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
+                            : 'bg-blue-500 hover:bg-blue-600 text-white'
                             }`}
                     >
                         {isSubmitting ? (
@@ -231,8 +261,8 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                         onClick={handlePriorityChange}
                         disabled={isSubmitting || selectedPriority === signalement.priority_level || selectedPriority === ''}
                         className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${isSubmitting || selectedPriority === signalement.priority_level || selectedPriority === ''
-                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                                : 'bg-orange-500 hover:bg-orange-600 text-white'
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
+                            : 'bg-orange-500 hover:bg-orange-600 text-white'
                             }`}
                     >
                         {isSubmitting ? (
@@ -250,21 +280,36 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                 </div>
             </div>
 
-            {/* Actions avancées */}
+            {/* Marquer comme spam */}
             <div className="bg-red-50 dark:bg-red-900/10 rounded-lg p-4 border border-red-200 dark:border-red-900/30">
-                <h3 className="text-lg font-medium text-red-700 dark:text-red-400 mb-4">Actions avancées</h3>
+                <h3 className="text-lg font-medium text-red-700 dark:text-red-400 mb-4">Signaler comme spam</h3>
 
-                <div className="space-y-2">
+                <div className="space-y-4">
                     <p className="text-sm text-red-600 dark:text-red-400 mb-4">
-                        Attention : Les actions ci-dessous sont définitives et ne peuvent pas être annulées.
+                        Cette action marquera le signalement comme spam et changera son statut.
+                        Cette action peut être annulée ultérieurement.
                     </p>
 
+                    <div>
+                        <label htmlFor="spam-reason" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Raison du marquage comme spam
+                        </label>
+                        <textarea
+                            id="spam-reason"
+                            value={spamReason}
+                            onChange={(e) => setSpamReason(e.target.value)}
+                            placeholder="Indiquez pourquoi ce signalement est considéré comme spam..."
+                            className="w-full min-h-20 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-3 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                            disabled={isSubmitting}
+                        ></textarea>
+                    </div>
+
                     <button
-                        onClick={handleRejectSignalement}
-                        disabled={isSubmitting}
-                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${isSubmitting
-                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                                : 'bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400'
+                        onClick={handleMarkAsSpam}
+                        disabled={isSubmitting || !spamReason.trim()}
+                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${isSubmitting || !spamReason.trim()
+                            ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
+                            : 'bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400'
                             }`}
                     >
                         {isSubmitting ? (
@@ -274,8 +319,8 @@ const ActionsTab: React.FC<ActionsTabProps> = ({
                             </>
                         ) : (
                             <>
-                                <Ban className="h-4 w-4" />
-                                Rejeter le signalement
+                                <Flag className="h-4 w-4" />
+                                Marquer comme spam
                             </>
                         )}
                     </button>

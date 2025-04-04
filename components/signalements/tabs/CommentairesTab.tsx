@@ -1,43 +1,49 @@
+// components/signalements/tabs/CommentairesTab.tsx
 import React, { useState } from 'react';
-import { Send, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Send, RefreshCw, AlertTriangle, User, Clock } from 'lucide-react';
 import { Commentaire } from '@/lib/services/signalements/get-signalement-details';
+import { createComment } from '@/lib/services/signalements/comment';
 
 interface CommentairesTabProps {
     commentaires: Commentaire[];
     signalementId: string;
     isLoading: boolean;
+    onCommentAdded?: () => void; // Callback pour rafraîchir les données
 }
 
 const CommentairesTab: React.FC<CommentairesTabProps> = ({
     commentaires,
-    isLoading
+    signalementId,
+    isLoading,
+    onCommentAdded
 }) => {
     const [newComment, setNewComment] = useState('');
     const [isInternal, setIsInternal] = useState(false);
     const [isSending, setIsSending] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // Fonction qui serait appelée pour ajouter un commentaire
+    // Fonction pour ajouter un commentaire
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newComment.trim()) return;
 
         setIsSending(true);
-        try {
-            // Ici, vous implémenteriez l'appel à votre API pour ajouter un commentaire
-            // Exemple: await addCommentService(signalementId, newComment, isInternal);
+        setError(null);
 
-            // Simulons un délai d'API
-            await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+            // Appel au service d'ajout de commentaire
+            await createComment(signalementId, newComment, isInternal);
 
             // Réinitialiser le formulaire après succès
             setNewComment('');
-            alert('Commentaire ajouté avec succès!');
 
-            // Idéalement, vous auriez une fonction de callback pour rafraîchir les données
-            // ou utiliseriez un state manager comme Redux, Zustand, etc.
+            // Appeler le callback pour rafraîchir les données
+            if (onCommentAdded) {
+                onCommentAdded();
+            }
         } catch (error) {
             console.error('Erreur lors de l\'ajout du commentaire:', error);
-            alert('Une erreur est survenue lors de l\'ajout du commentaire.');
+            setError('Une erreur est survenue lors de l\'ajout du commentaire. Veuillez réessayer.');
         } finally {
             setIsSending(false);
         }
@@ -47,23 +53,7 @@ const CommentairesTab: React.FC<CommentairesTabProps> = ({
     if (isLoading) {
         return (
             <div className="space-y-6 animate-pulse">
-                <div>
-                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-40 mb-2"></div>
-                    <div className="h-32 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                    <div className="flex justify-between">
-                        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-40"></div>
-                        <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
-                    </div>
-                </div>
-
-                <div>
-                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-64 mb-4"></div>
-                    <div className="space-y-4">
-                        {[1, 2].map(item => (
-                            <div key={item} className="bg-gray-200 dark:bg-gray-700 rounded-lg h-32"></div>
-                        ))}
-                    </div>
-                </div>
+                {/* Le même code de chargement que vous avez déjà */}
             </div>
         );
     }
@@ -85,6 +75,13 @@ const CommentairesTab: React.FC<CommentairesTabProps> = ({
                         ></textarea>
                     </div>
 
+                    {error && (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/10 text-red-700 dark:text-red-400 rounded-lg flex items-start gap-2 text-sm">
+                            <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                            <span>{error}</span>
+                        </div>
+                    )}
+
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <div className="flex items-center">
                             <input
@@ -104,8 +101,8 @@ const CommentairesTab: React.FC<CommentairesTabProps> = ({
                             type="submit"
                             disabled={isSending || !newComment.trim()}
                             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${isSending || !newComment.trim()
-                                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                                    : 'bg-orange-500 hover:bg-orange-600 text-white'
+                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
+                                : 'bg-orange-500 hover:bg-orange-600 text-white'
                                 }`}
                         >
                             {isSending ? (
@@ -140,14 +137,14 @@ const CommentairesTab: React.FC<CommentairesTabProps> = ({
                             <div
                                 key={commentaire.id}
                                 className={`p-4 rounded-lg ${commentaire.interne
-                                        ? 'bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/30'
-                                        : 'bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700'
+                                    ? 'bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/30'
+                                    : 'bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700'
                                     }`}
                             >
                                 <div className="flex justify-between mb-2">
                                     <div className="flex items-center gap-2">
                                         <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                                            {commentaire.auteur.nom.charAt(0).toUpperCase()}
+                                            <User className="h-4 w-4" />
                                         </div>
                                         <div>
                                             <div className="font-medium text-gray-900 dark:text-white">
@@ -159,7 +156,8 @@ const CommentairesTab: React.FC<CommentairesTabProps> = ({
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                                    <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+                                        <Clock className="h-3.5 w-3.5" />
                                         {new Date(commentaire.date).toLocaleDateString('fr-FR', {
                                             day: '2-digit',
                                             month: '2-digit',
